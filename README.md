@@ -84,7 +84,7 @@ qr-forge-pro/
 ├── styles/                 
 │   └── popup.css  
 ├── scripts/                
-│   ├── qr_min.js
+│   ├── qr-code-min.js
 │   └── app.js    
 ├── validator/                
 │  └── index.html            
