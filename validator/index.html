@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Forge - Secure Access</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      width: 100%;
+      background: white;
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+    }
+    h1 {
+      text-align: center;
+      color: #1f2937;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #6b7280;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .status-box {
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .status-box.error {
+      background: #fee2e2;
+      border: 2px solid #ef4444;
+      color: #991b1b;
+    }
+    .status-box.success {
+      background: #d1fae5;
+      border: 2px solid #10b981;
+      color: #065f46;
+    }
+    .status-box .icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+    .status-box h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+    .password-form {
+      display: none;
+    }
+    .password-form.active { display: block; }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      color: #374151;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    button {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover { transform: translateY(-2px); }
+    .info-grid {
+      display: none;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .info-grid.active { display: grid; }
+    .info-item {
+      padding: 12px;
+      background: #f9fafb;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .info-label { font-weight: 600; color: #4b5563; font-size: 13px; }
+    .info-value { color: #1f2937; font-size: 14px; }
+    .access-url {
+      display: none;
+      margin-top: 20px;
+      padding: 20px;
+      background: #f0fdf4;
+      border: 2px solid #86efac;
+      border-radius: 12px;
+    }
+    .access-url.active { display: block; }
+    .access-url a {
+      color: #667eea;
+      font-weight: 700;
+      font-size: 16px;
+      word-break: break-all;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🔒</div>
+    <h1>QR Forge Security</h1>
+    <p class="subtitle">Validating your secure QR code...</p>
+
+    <div class="status-box error" id="statusBox" style="display:none;">
+      <div class="icon">❌</div>
+      <h2>Error</h2>
+      <p id="errorMessage">Invalid QR code</p>
+    </div>
+
+    <div class="password-form" id="passwordForm">
+      <div class="form-group">
+        <label>🔐 Enter Password</label>
+        <input type="password" id="passwordInput" placeholder="Enter password">
+      </div>
+      <button onclick="validatePassword()">Unlock & Access</button>
+    </div>
+
+    <div class="info-grid" id="infoGrid"></div>
+    <div class="access-url" id="accessUrl"></div>
+  </div>
+
+  <script>
+    let qrData = null;
+
+    // Parse URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const encodedData = params.get('d');
+
+    if (!encodedData) {
+      showError('Invalid QR code - no data');
+    } else {
+      try {
+        // Decode Base64
+        const jsonStr = atob(encodedData);
+        qrData = JSON.parse(jsonStr);
+        validateQR();
+      } catch (e) {
+        showError('Invalid QR code format');
+      }
+    }
+
+    function validateQR() {
+      // Check expiration
+      if (qrData.exp) {
+        if (Date.now() > qrData.exp) {
+          showExpired();
+          return;
+        }
+      }
+
+      // Check scan limit (client-side only, not foolproof)
+      if (qrData.lim) {
+        const key = 'qr_scan_' + qrData.id;
+        let scans = parseInt(localStorage.getItem(key) || '0');
+        
+        if (scans >= qrData.lim) {
+          showLimitReached(scans, qrData.lim);
+          return;
+        }
+        
+        // Increment
+        scans++;
+        localStorage.setItem(key, scans.toString());
+        qrData.scans = scans;
+      }
+
+      // Check password
+      if (qrData.pwd) {
+        showPasswordForm();
+      } else {
+        showSuccess();
+      }
+    }
+
+    function showPasswordForm() {
+      document.getElementById('passwordForm').classList.add('active');
+      showInfo();
+    }
+
+    function validatePassword() {
+      const input = document.getElementById('passwordInput').value;
+      
+      if (!input) {
+        alert('Please enter a password');
+        return;
+      }
+
+      if (input === qrData.pwd) {
+        document.getElementById('passwordForm').style.display = 'none';
+        showSuccess();
+      } else {
+        alert('❌ Incorrect password!');
+        document.getElementById('passwordInput').value = '';
+      }
+    }
+
+    function showSuccess() {
+      const box = document.getElementById('statusBox');
+      box.className = 'status-box success';
+      box.innerHTML = '<div class="icon">✅</div><h2>Access Granted!</h2><p>Redirecting to URL...</p>';
+      box.style.display = 'block';
+      
+      showInfo();
+      showURL();
+      
+      // Auto redirect after 2 seconds
+      setTimeout(() => {
+        window.location.href = qrData.url;
+      }, 2000);
+    }
+
+    function showExpired() {
+      const expDate = new Date(qrData.exp);
+      showError(`QR Code Expired<br><small>Expired on: ${expDate.toLocaleString()}</small>`);
+      showInfo();
+    }
+
+    function showLimitReached(current, max) {
+      showError(`Scan Limit Reached<br><small>${current}/${max} scans used</small>`);
+      showInfo();
+    }
+
+    function showError(message) {
+      const box = document.getElementById('statusBox');
+      box.style.display = 'block';
+      document.getElementById('errorMessage').innerHTML = message;
+    }
+
+    function showInfo() {
+      const grid = document.getElementById('infoGrid');
+      let html = '';
+
+      if (qrData.pwd) {
+        html += '<div class="info-item"><span class="info-label">🔒 Security</span><span class="info-value">Password Protected</span></div>';
+      }
+
+      if (qrData.exp) {
+        const expDate = new Date(qrData.exp);
+        const valid = Date.now() <= qrData.exp;
+        html += '<div class="info-item"><span class="info-label">⏰ Expires</span><span class="info-value">' + expDate.toLocaleString() + '</span></div>';
+        html += '<div class="info-item"><span class="info-label">Status</span><span class="info-value">' + (valid ? '✅ Valid' : '❌ Expired') + '</span></div>';
+      }
+
+      if (qrData.lim) {
+        const scans = qrData.scans || 0;
+        html += '<div class="info-item"><span class="info-label">📊 Scan Limit</span><span class="info-value">' + scans + ' / ' + qrData.lim + '</span></div>';
+        html += '<div class="info-item"><span class="info-label">Remaining</span><span class="info-value">' + (qrData.lim - scans) + ' scans</span></div>';
+      }
+
+      if (html) {
+        grid.innerHTML = html;
+        grid.classList.add('active');
+      }
+    }
+
+    function showURL() {
+      const urlDiv = document.getElementById('accessUrl');
+      urlDiv.innerHTML = '<p style="font-size:14px;color:#065f46;margin-bottom:12px;font-weight:600;">🌐 Access URL:</p><a href="' + qrData.url + '">' + qrData.url + '</a>';
+      urlDiv.classList.add('active');
+    }
+  </script>
+</body>
+</html>
