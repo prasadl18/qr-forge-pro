@@ -81,21 +81,19 @@ All validation happens client-side, ensuring privacy while maintaining access co
 ```
 qr-forge-pro/
 │
-├── extension/
-│   ├── manifest.json
-│   ├── popup.html
-│   ├── popup.css
-│   ├── popup.js
-│   └── qr-generator.js
-│
-├── validator/
-│   ├── index.html
-│   ├── style.css
-│   └── script.js
-│
-├── README.md
-├── LICENSE
-└── .gitignore
+├── styles/                 
+│   └── popup.css  
+├── scripts/                
+│   ├── qr_min.js
+│   └── app.js    
+├── validator/                
+│  └── index.html            
+├── manifest.json
+├── popup.html
+├── README.md                 
+├── LICENSE                   
+└── .gitignore        
+
 ```
 
 ---
