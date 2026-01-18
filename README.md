@@ -81,6 +81,8 @@ All validation happens client-side, ensuring privacy while maintaining access co
 ```
 qr-forge-pro/
 │
+│── icon_generation/                 
+│   └── code.py
 ├── styles/                 
 │   └── popup.css  
 ├── scripts/                
